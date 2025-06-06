@@ -18,7 +18,7 @@ class NatStatService:
         return url
 
     def get_full_response_by_url(self, url):
-        print(url)
+        # print(url)
         get_request = requests.get(url)
         if get_request.ok:
             response = json.loads(get_request.content)
