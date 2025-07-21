@@ -1,0 +1,22 @@
+// eddie/.vscode/tasks.json
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Lint",
+      "type": "shell",
+      "command": "flake8 src",
+      "group": "build"
+    },
+    {
+      "label": "Format",
+      "type": "shell",
+      "command": "black src"
+    },
+    {
+      "label": "Test",
+      "type": "shell",
+      "command": "pytest --maxfail=1 --disable-warnings -q"
+    }
+  ]
+}
