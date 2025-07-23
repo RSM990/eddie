@@ -74,3 +74,12 @@ class PlayerLoader(Loader):
 
         session.commit()
         session.close()
+
+
+    def reset_rookie_flags(self):
+            """
+            Clear the Rookie flag on *all* existing players before loading new rookies.
+            """
+            stmt = update(self.players).values(Rookie=False)
+            with self.engine.begin() as conn:
+                conn.execute(stmt)

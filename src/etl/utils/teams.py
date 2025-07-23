@@ -35,6 +35,12 @@ TEAM_ID_MAP: dict[int, List[str]] = {
     32: ["WAS"],
 }
 
+CODE_TO_ID_MAP: dict[str, int] = {
+    code: tid
+    for tid, codes in TEAM_ID_MAP.items()
+    for code in codes
+}
+
 def translate_team_id_to_code(
     team_id: int, *, historical: bool = False
 ) -> Optional[str]:
@@ -55,3 +61,9 @@ def translate_team_id_to_codes(team_id: int) -> List[str]:
     Get _all_ codes ever used by this franchise.
     """
     return TEAM_ID_MAP.get(team_id, [])
+
+def translate_team_code_to_id(code: str) -> Optional[int]:
+    """
+    Map a 2–4 letter team code (e.g. 'DAL', 'RAV') to its numeric team_id.
+    """
+    return CODE_TO_ID_MAP.get(code.upper())
