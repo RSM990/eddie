@@ -32,6 +32,8 @@ class PFRRosterExtractor(Extractor):
     def fetch(self, season: int, team_code: str) -> BeautifulSoup:
         url = f"{self.base_url}/teams/{team_code}/{season}_roster.htm"
 
+        print(f"Fetching PFR roster for {team_code} ({season}) from {url}")
+
         if self.use_selenium:
             self.driver.get(url)
             # block until the roster table is actually in the DOM

@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List, Dict, Optional
 from sqlalchemy import create_engine, MetaData, Table, update, insert, select
 from sqlalchemy.orm import sessionmaker
 
@@ -37,17 +37,28 @@ class PlayerLoader(Loader):
 
     def load(self, items: List[RosterPlayer]):
         session = self.Session()
-        for p in items:
+        for idx, p in enumerate(items, start=1):
             existing_id = self.existing_map.get(p.pro_reference_key)
             if existing_id:
+                print(
+                    f"Row {idx} of {len(items)}  - Updating ({p.full_name})",
+                    end="\r",
+                    flush=True
+                )
                 # Update existing player
                 stmt = (
                     update(self.players)
                     .where(self.players.c.Id == existing_id)
                     .values(NFLTeamId=p.nfl_team_id, Retired=False)
                 )
+
                 session.execute(stmt)
             else:
+                print(
+                    f"Row {idx} of {len(items)}  - Adding ({p.full_name})",
+                    end="\r",
+                    flush=True
+                )
                 # Insert new player
                 stmt = insert(self.players).values(
                     ProReferenceKey = p.pro_reference_key,
@@ -71,9 +82,32 @@ class PlayerLoader(Loader):
                 # Capture the newly inserted ID
                 new_id = result.inserted_primary_key[0]
                 self.existing_map[p.pro_reference_key] = new_id
-
+        print()
         session.commit()
         session.close()
+
+        
+    def update_player_status(
+        self,
+        pro_reference_key: str,
+        retired: bool,
+        jersey_number: Optional[int],
+        nfl_team_id: Optional[int],
+    ):
+        player_id = self.existing_map.get(pro_reference_key)
+        if not player_id:
+            return
+        stmt = (
+            update(self.players)
+            .where(self.players.c.Id == player_id)
+            .values(
+                Retired        = retired,
+                JerseyNumber   = jersey_number,
+                NFLTeamId      = nfl_team_id
+            )
+        )
+        with self.engine.begin() as conn:
+            conn.execute(stmt)
 
 
     def reset_rookie_flags(self):

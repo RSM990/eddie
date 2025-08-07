@@ -37,7 +37,8 @@ def main():
     loader      = PlayerLoader(settings.db_url)
 
 
-    RUN_DRAFT = True
+    RUN_DRAFT = False
+    
 
     if RUN_DRAFT:
         loader.reset_rookie_flags()
@@ -53,6 +54,7 @@ def main():
 
         loader.clear_team(team_id)
         loader.load(roster)
+    
 
         print(f"Team {team_id} ({code}): loaded {len(roster)} players")
 

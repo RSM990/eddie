@@ -20,7 +20,8 @@ class NFLRosterTransformer(Transformer):
         rows = table.find("tbody").find_all("tr")
         players: List[RosterPlayer] = []
 
-        for row in rows:
+        print(f"Parsing {len(rows)} players for team {team_id}",end="\r",flush=True)
+        for  row in rows:
             cols = row.find_all("td")
             if not cols:
                 continue
@@ -64,8 +65,8 @@ class NFLRosterTransformer(Transformer):
                 college = raw_college or None
                 
             height  = cols[6].text.strip() or None
-            weight  = cols[5].text.strip() or None
-
+            weight  = cols[5].text.strip() or None      
+            
             players.append(RosterPlayer(
                 pro_reference_key=key,
                 pro_reference_url=pro_url,
@@ -81,5 +82,5 @@ class NFLRosterTransformer(Transformer):
                 height=height,
                 weight=weight
             ))
-
+        
         return players
