@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from datetime import date
+from datetime import date, datetime
 from typing import Optional
 
 class RosterPlayer(BaseModel):
@@ -19,3 +19,17 @@ class RosterPlayer(BaseModel):
     trading_block:      bool = False
     retired:            bool = False
     weeks_left_on_ir:   int  = 0
+
+class NFLGame(BaseModel):
+    """
+    Represents one NFL schedule entry.
+    """
+    # (id will be populated by the loader, if needed)
+    id: Optional[int] = None
+
+    season_id:    int
+    week:         int
+    home_team_id: int
+    away_team_id: int
+    start_time:   Optional[datetime]
+    boxscore_link: str

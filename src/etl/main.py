@@ -11,6 +11,10 @@ from etl.extractors.pfr.roster import PFRRosterExtractor
 from etl.transformers.nfl_roster import NFLRosterTransformer
 from etl.loaders.wac.player_loader   import PlayerLoader
 from etl.utils.teams             import translate_team_id_to_code
+from etl.extractors.pfr.games      import PFRGamesExtractor
+from etl.transformers.nfl_games    import NFLGamesTransformer
+from etl.loaders.wac.game_loader   import GameLoader
+
 
 def main():
     parser = argparse.ArgumentParser(prog="eddie ETL",
@@ -36,9 +40,17 @@ def main():
     draft_transformer = NFLDraftTransformer(settings)
     loader      = PlayerLoader(settings.db_url)
 
+    game_extractor   = PFRGamesExtractor(settings)
+    game_transformer = NFLGamesTransformer()
+    game_loader      = GameLoader(settings.db_url)
+
+
 
     RUN_DRAFT = False
+
+    LOAD_GAMES = True
     
+    LOAD_PLAYERS = False
 
     if RUN_DRAFT:
         loader.reset_rookie_flags()
@@ -47,16 +59,22 @@ def main():
         loader.load(draft)
     
 
-    for team_id in range(1, 33):
-        code   = translate_team_id_to_code(team_id, historical=True).lower()
-        soup   = extractor.fetch(args.season, code)
-        roster = transformer.parse(soup, team_id)
+    if LOAD_GAMES:
+        soup = game_extractor.fetch(args.season)
+        games = game_transformer.parse(soup, args.season)
+        game_loader.load(games)
 
-        loader.clear_team(team_id)
-        loader.load(roster)
-    
+    if LOAD_PLAYERS:
+        for team_id in range(1, 33):
+            code   = translate_team_id_to_code(team_id, historical=True).lower()
+            soup   = extractor.fetch(args.season, code)
+            roster = transformer.parse(soup, team_id)
 
-        print(f"Team {team_id} ({code}): loaded {len(roster)} players")
+            loader.clear_team(team_id)
+            loader.load(roster)
+        
+
+            print(f"Team {team_id} ({code}): loaded {len(roster)} players")
 
     print("✅ Roster ETL complete")
 
