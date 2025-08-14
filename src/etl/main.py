@@ -14,6 +14,16 @@ from etl.utils.teams             import translate_team_id_to_code
 from etl.extractors.pfr.games      import PFRGamesExtractor
 from etl.transformers.nfl_games    import NFLGamesTransformer
 from etl.loaders.wac.game_loader   import GameLoader
+from etl.extractors.pfr.boxscores    import PFRBoxscoreExtractor
+from etl.transformers.nfl_stats      import NFLStatsTransformer
+from etl.loaders.wac.stat_loader     import StatLoader
+
+
+def _normalize_box_link(link: str) -> str:
+    # Accept either full URL or PFR-relative path ("/boxscores/....htm")
+    if link.startswith("http"):
+        return link
+    return f"https://www.pro-football-reference.com{link}"
 
 
 def main():
@@ -44,13 +54,17 @@ def main():
     game_transformer = NFLGamesTransformer()
     game_loader      = GameLoader(settings.db_url)
 
-
+    stats_extractor   = PFRBoxscoreExtractor(settings)
+    stats_transformer = NFLStatsTransformer()
+    stats_loader      = StatLoader(settings.db_url)
 
     RUN_DRAFT = False
 
-    LOAD_GAMES = True
+    LOAD_GAMES = False
     
     LOAD_PLAYERS = False
+
+    LOAD_STATS = True
 
     if RUN_DRAFT:
         loader.reset_rookie_flags()
@@ -75,6 +89,30 @@ def main():
         
 
             print(f"Team {team_id} ({code}): loaded {len(roster)} players")
+
+
+
+    if LOAD_STATS:
+        #remember to replace season and week with args.season and args.week
+        season = 6
+        for week in range(1, 19):
+            print(f"Loading stats for season {season}, week {week}...")
+
+            links = stats_loader.get_boxscores_for_week(season, week)
+            if not links:
+                print(f"No boxscores found for season={season}, week={week}")
+                return
+
+            total_patches = 0
+            for raw_link in links:
+                link = _normalize_box_link(raw_link)
+                soup = stats_extractor.fetch(link)
+                patches = stats_transformer.parse(soup)
+                stats_written = stats_loader.load(season, week, patches)
+                total_patches += stats_written
+
+            print(f"✅ Stats loaded for week {week} ({season}). Patches: {total_patches}")
+
 
     print("✅ Roster ETL complete")
 
