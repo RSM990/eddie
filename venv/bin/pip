@@ -1,4 +1,4 @@
-#!/Users/reagan/Repo/eddie/venv/bin/python3
+#!/Users/reagan/Repo/eddie/venv/bin/python
 # -*- coding: utf-8 -*-
 import re
 import sys

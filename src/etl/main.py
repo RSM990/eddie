@@ -7,17 +7,30 @@ from src.etl.transformers.nfl_draft import NFLDraftTransformer
 
 import argparse
 from etl.config                  import Settings
+from etl.extractors.pfr.http import PFRHttpClient
+
+
+from etl.utils.teams             import translate_team_id_to_code
+
+
 from etl.extractors.pfr.roster import PFRRosterExtractor
 from etl.transformers.nfl_roster import NFLRosterTransformer
 from etl.loaders.wac.player_loader   import PlayerLoader
-from etl.utils.teams             import translate_team_id_to_code
+
+
+
 from etl.extractors.pfr.games      import PFRGamesExtractor
 from etl.transformers.nfl_games    import NFLGamesTransformer
 from etl.loaders.wac.game_loader   import GameLoader
+
 from etl.extractors.pfr.boxscores    import PFRBoxscoreExtractor
 from etl.transformers.nfl_stats      import NFLStatsTransformer
 from etl.loaders.wac.stat_loader     import StatLoader
 
+
+from etl.extractors.pfr.season_stats import PFRSeasonExtractor
+from etl.transformers.nfl_season_stats import NFLSeasonStatsTransformer
+from etl.loaders.wac.season_stat_loader import SeasonStatLoader
 
 def _normalize_box_link(link: str) -> str:
     # Accept either full URL or PFR-relative path ("/boxscores/....htm")
@@ -25,6 +38,15 @@ def _normalize_box_link(link: str) -> str:
         return link
     return f"https://www.pro-football-reference.com{link}"
 
+def derive_season_id(year: int) -> int:
+    """
+    Linear mapping provided:
+      2024 -> 7, 2025 -> 8, ...
+      season_id = 7 + (year - 2024)
+    """
+    base_year = 2024
+    base_id = 7
+    return base_id + (year - base_year)
 
 def main():
     parser = argparse.ArgumentParser(prog="eddie ETL",
@@ -58,13 +80,20 @@ def main():
     stats_transformer = NFLStatsTransformer()
     stats_loader      = StatLoader(settings.db_url)
 
+    client                    = PFRHttpClient()
+    season_stat_extractor   = PFRSeasonExtractor(settings)
+    season_stat_transformer = NFLSeasonStatsTransformer()
+    season_stat_loader      = SeasonStatLoader(settings.db_url)
+
     RUN_DRAFT = False
 
     LOAD_GAMES = False
     
     LOAD_PLAYERS = False
 
-    LOAD_STATS = True
+    LOAD_STATS = False
+
+    LOAD_SEASON_STATS = True
 
     if RUN_DRAFT:
         loader.reset_rookie_flags()
@@ -112,6 +141,12 @@ def main():
                 total_patches += stats_written
 
             print(f"✅ Stats loaded for week {week} ({season}). Patches: {total_patches}")
+
+    if LOAD_SEASON_STATS:
+        patches = season_stat_transformer.parse_all(args.season, season_stat_extractor.fetch)
+        written = season_stat_loader.load(args.season, 0, patches)
+        print(f"Season totals written: {written}")
+
 
 
     print("✅ Roster ETL complete")
