@@ -2,7 +2,6 @@
 
 from bs4 import BeautifulSoup
 from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -24,7 +23,7 @@ class PFRRosterExtractor(Extractor):
             opts.add_argument("--window-size=1920,1080")
             # inject your user‑agent so you don’t get blocked
             opts.add_argument(f"user-agent={settings.user_agent}")
-            self.driver = webdriver.Chrome(service=Service(), options=opts)
+            self.driver = webdriver.Chrome(options=opts)
             # wait up to 15s for the table to appear
             self.wait   = WebDriverWait(self.driver, 15)
 

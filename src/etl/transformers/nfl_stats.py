@@ -143,10 +143,10 @@ class NFLStatsTransformer(Transformer):
                     continue
                 key = a["href"].split("/")[3].split(".")[0]
                 fields = {
-                    "KRYards": _safe_int(_td_text_by_names(row, ["kr_yds"])),
-                    "KRTDs":   _safe_int(_td_text_by_names(row, ["kr_td"])),
-                    "PRYards": _safe_int(_td_text_by_names(row, ["pr_yds"])),
-                    "PRTDs":   _safe_int(_td_text_by_names(row, ["pr_td"])),
+                    "KRYards": _safe_int(_td_text_by_names(row, [ "kr_yds","kick_ret_yds"])),
+                    "KRTDs":   _safe_int(_td_text_by_names(row, ["kr_td", "kick_ret_td"])),
+                    "PRYards": _safe_int(_td_text_by_names(row, ["pr_yds", "punt_ret_yds"])),
+                    "PRTDs":   _safe_int(_td_text_by_names(row, ["pr_td", "punt_ret_td"])),
                 }
                 patches[key] = _merge_add(patches.get(key), fields)
 
@@ -163,8 +163,8 @@ class NFLStatsTransformer(Transformer):
 
                 # Flexible fetches for columns that sometimes change labels
                 solo_tk   = _safe_int(_td_text_by_names(row, ["tkl", "tackles_solo", "tackles"]))
-                ast_tk    = _safe_int(_td_text_by_names(row, ["ast", "tackles_assist"]))
-                tfl       = _safe_int(_td_text_by_names(row, ["tfl", "tackle_for_loss"]))
+                ast_tk    = _safe_int(_td_text_by_names(row, ["ast", "tackles_assist", "tackles_assists"]))
+                tfl       = _safe_int(_td_text_by_names(row, ["tfl", "tackle_for_loss", "tackles_loss"]))
                 qb_hit    = _safe_int(_td_text_by_names(row, ["qb_hit", "qb_hits"]))
                 pd        = _safe_int(_td_text_by_names(row, ["pd", "pass_defended", "pass_defendeds"]))
 
@@ -177,14 +177,13 @@ class NFLStatsTransformer(Transformer):
                 int_yds   = _safe_int(_td_text_by_names(row, ["int_yds", "def_int_yds"]))
 
                 # Touchdowns — PFR may split between INT TD and Fumble Return TD
-                int_td    = _safe_int(_td_text_by_names(row, ["int_td"]))
+                int_td    = _safe_int(_td_text_by_names(row, ["int_td", "def_int_td"]))
                 fr_td     = _safe_int(_td_text_by_names(row, ["fumbles_rec_td", "fr_td"]))
                 misc_td   = _safe_int(_td_text_by_names(row, ["def_td", "td"]))  # sometimes a generic 'def_td' or 'td'
                 def_td    = int_td + fr_td + misc_td
 
                 # Sacks can be fractional on PFR; your DB uses int -> round to nearest int
-                sacks_val = _safe_float(_td_text_by_names(row, ["sk", "sacks"]))
-                sacks     = int(round(sacks_val))
+                sacks     = _safe_float(_td_text_by_names(row, ["sk", "sacks"]))
 
                 safety    = _safe_int(_td_text_by_names(row, ["sfty", "safety"]))
                 blk_kick  = _safe_int(_td_text_by_names(row, ["blk_kick", "blk"]))

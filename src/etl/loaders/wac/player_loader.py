@@ -38,6 +38,32 @@ class PlayerLoader(Loader):
     def load(self, items: List[RosterPlayer]):
         session = self.Session()
         for idx, p in enumerate(items, start=1):
+            injury_status = None
+            injury_comment = None
+            injury_practice_status = None
+            if "(IR)" in p.full_name:
+                injury_status = "IR"
+                injury_comment = "On Injured Reserve"
+                injury_practice_status = "IR"
+            elif "(PUP)" in p.full_name:
+                injury_status = "PUP"
+                injury_comment = "On Physically Unable to Perform List"
+                injury_practice_status = "PUP"
+            elif "(NFI)" in p.full_name:
+                injury_status = "NFI"
+                injury_comment = "On Non-Football Injury List"
+                injury_practice_status = "NFI"
+            elif "(COVID)" in p.full_name:
+                injury_status = "COVID"
+                injury_comment = "On COVID-19 List"
+                injury_practice_status = "COVID"    
+            elif ("IRD" in p.full_name) or ("(IR-R)" in p.full_name):
+                injury_status = "IR-R"
+                injury_comment = "On Injured Reserve - Designated for Return"
+                injury_practice_status = "IR-R"
+
+
+
             existing_id = self.existing_map.get(p.pro_reference_key)
             if existing_id:
                 print(
@@ -45,11 +71,23 @@ class PlayerLoader(Loader):
                     end="\r",
                     flush=True
                 )
+                defensive_position = None
                 # Update existing player
+                if p.position in [ "EDGE", "DL", "LB", "DB" ]:
+                    defensive_position = p.position
+                    
+
                 stmt = (
                     update(self.players)
                     .where(self.players.c.Id == existing_id)
-                    .values(NFLTeamId=p.nfl_team_id, Retired=False)
+                    .values(NFLTeamId=p.nfl_team_id, 
+                            Retired=False, 
+                            Position=p.position,  
+                            JerseyNumber=p.jersey_number, 
+                            DefensivePosition= defensive_position, 
+                            InjuryStatus=injury_status, 
+                            InjuryComment=injury_comment, 
+                            InjuryPracticeStatus=injury_practice_status)
                 )
 
                 session.execute(stmt)
@@ -76,7 +114,11 @@ class PlayerLoader(Loader):
                     Weight          = p.weight,
                     TradingBlock    = p.trading_block,
                     Retired         = p.retired,
-                    WeeksLeftOnIR   = p.weeks_left_on_ir
+                    WeeksLeftOnIR   = p.weeks_left_on_ir,
+                    DefensivePosition = p.position if p.position in [ "EDGE", "DL", "LB", "DB" ] else None,
+                    InjuryStatus    = injury_status,
+                    InjuryComment   = injury_comment,
+                    InjuryPracticeStatus = injury_practice_status
                 )
                 result = session.execute(stmt)
                 # Capture the newly inserted ID

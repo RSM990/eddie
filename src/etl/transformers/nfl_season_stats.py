@@ -299,7 +299,7 @@ class NFLSeasonStatsTransformer:
             "DefensiveTD":  _int_any(tr, ["def_td", "td"]),
             "DefensiveInt": _int_any(tr, ["def_int", "int"]),
             "DefensiveIntYards": _int_any(tr, ["int_yds", "def_int_yds"]),
-            "Sacks":        _int_any(tr, ["sacks", "sk"]),
+            "Sacks":        _float_any(tr, ["sacks", "sk"]),
             "TackleSolo":   _int_any(tr, ["tackles_solo", "solo_tkl", "solo"]),
             "TackleAssists":_int_any(tr, ["tackles_assists", "ast_tkl", "assist"]),
             "TackleForLoss":_int_any(tr, ["tackles_loss", "tfl"]),

@@ -48,6 +48,22 @@ def derive_season_id(year: int) -> int:
     base_id = 7
     return base_id + (year - base_year)
 
+
+from etl.extractors.pfr.injuries import PFRInjuryExtractor
+from etl.transformers.nfl_injuries import NFLInjuryTransformer
+from etl.loaders.wac.injury_loader import InjuryLoader
+
+
+def run_injury_sync(settings):
+    extractor   = PFRInjuryExtractor(settings)   # uses cloudscraper + rate limit
+    transformer = NFLInjuryTransformer()
+    loader      = InjuryLoader(settings.db_url)
+
+    soup  = extractor.fetch()            # returns BeautifulSoup with the injuries table
+    rows  = transformer.parse(soup)      # list of dicts
+    loader.clear_injuries(False)              # clear all 3 fields first
+    loader.load(rows)                    # upsert current injuries
+
 def main():
     parser = argparse.ArgumentParser(prog="eddie ETL",
                                      description="Run NFL roster ETL")
@@ -91,9 +107,11 @@ def main():
     
     LOAD_PLAYERS = False
 
-    LOAD_STATS = False
+    LOAD_STATS = True  
 
-    LOAD_SEASON_STATS = True
+    LOAD_SEASON_STATS = False
+    
+    RUN_INJURIES = False
 
     if RUN_DRAFT:
         loader.reset_rookie_flags()
@@ -108,12 +126,16 @@ def main():
         game_loader.load(games)
 
     if LOAD_PLAYERS:
+        injury_loader = InjuryLoader(settings.db_url)
+        injury_loader.clear_injuries(True)
         for team_id in range(1, 33):
+            
             code   = translate_team_id_to_code(team_id, historical=True).lower()
             soup   = extractor.fetch(args.season, code)
             roster = transformer.parse(soup, team_id)
 
             loader.clear_team(team_id)
+
             loader.load(roster)
         
 
@@ -123,24 +145,24 @@ def main():
 
     if LOAD_STATS:
         #remember to replace season and week with args.season and args.week
-        season = 6
-        for week in range(1, 19):
-            print(f"Loading stats for season {season}, week {week}...")
+        season = 8
+        week = 15
+        print(f"Loading stats for season {season}, week {week}...")
 
-            links = stats_loader.get_boxscores_for_week(season, week)
-            if not links:
-                print(f"No boxscores found for season={season}, week={week}")
-                return
+        links = stats_loader.get_boxscores_for_week(season, week)
+        if not links:
+            print(f"No boxscores found for season={season}, week={week}")
+            return
 
-            total_patches = 0
-            for raw_link in links:
-                link = _normalize_box_link(raw_link)
-                soup = stats_extractor.fetch(link)
-                patches = stats_transformer.parse(soup)
-                stats_written = stats_loader.load(season, week, patches)
-                total_patches += stats_written
+        total_patches = 0
+        for raw_link in links:
+            link = _normalize_box_link(raw_link)
+            soup = stats_extractor.fetch(link)
+            patches = stats_transformer.parse(soup)
+            stats_written = stats_loader.load(season, week, patches)
+            total_patches += stats_written
 
-            print(f"✅ Stats loaded for week {week} ({season}). Patches: {total_patches}")
+        print(f"✅ Stats loaded for week {week} ({season}). Patches: {total_patches}")
 
     if LOAD_SEASON_STATS:
         patches = season_stat_transformer.parse_all(args.season, season_stat_extractor.fetch)
@@ -148,8 +170,11 @@ def main():
         print(f"Season totals written: {written}")
 
 
+    if RUN_INJURIES:
+        run_injury_sync(settings)
 
-    print("✅ Roster ETL complete")
+
+    print("✅ WAC Data Update complete")
 
 if __name__ == "__main__":
     main()

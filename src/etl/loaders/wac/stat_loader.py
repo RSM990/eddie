@@ -7,6 +7,8 @@ from sqlalchemy import create_engine, MetaData, Table, select, insert, update, a
 from etl.loaders.base import Loader
 from models.stats import PlayerWeekStatPatch
 
+from datetime import datetime
+
 
 class StatLoader(Loader):
     """
@@ -34,11 +36,13 @@ class StatLoader(Loader):
 
     def get_boxscores_for_week(self, season: int, week: int) -> List[str]:
         with self.engine.connect() as conn:
+            now = datetime.now()
             rows = conn.execute(
                 select(self.schedule.c.BoxscoreLink)
                 .where(and_(
                     self.schedule.c.SeasonId == season,
-                    self.schedule.c.Week     == week
+                    self.schedule.c.Week     == week,
+                    self.schedule.c.StartTime < now
                 ))
             )
             return [r.BoxscoreLink for r in rows]
