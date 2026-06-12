@@ -6,20 +6,25 @@ from datetime import datetime
 from etl.transformers.base import Transformer
 from etl.utils.teams import translate_team_code_to_id
 from etl.utils.position_map import normalize_position
-from etl.utils.http import get_session, rate_limited
+from etl.utils.http import rate_limited
+from etl.utils.fetcher import get_pfr_fetcher
 from models.schemas import RosterPlayer
 
 class NFLDraftTransformer(Transformer):
     def __init__(self, settings):
         self.position_list = settings.position_list
-        # session for per‐player page fetches
-        self.session = get_session(settings.user_agent)
+        # Per-player pages are Cloudflare-gated like the index, so fetch via the
+        # configured strategy. Rate-limited below to respect PFR (~18 req/min).
+        self.fetcher = get_pfr_fetcher(settings)
 
     @rate_limited(max_calls=18, period=60.0)
     def fetch_player_soup(self, pro_url: str) -> BeautifulSoup:
-        resp = self.session.get(pro_url)
-        resp.raise_for_status()
-        return BeautifulSoup(resp.text, "html.parser")
+        return self.fetcher.get_soup(pro_url)
+
+    def __del__(self):
+        fetcher = getattr(self, "fetcher", None)
+        if fetcher is not None:
+            fetcher.quit()
 
     @rate_limited(max_calls=19, period=60.0)
     def parse(self, soup: BeautifulSoup, year: int) -> List[RosterPlayer]:
